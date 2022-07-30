@@ -1,0 +1,611 @@
+{
+  "rules": {
+      "Main": {
+        "Android":{
+          ".write":false,
+            ".read":true,
+        },
+      "Shared": {
+          "Events":{
+              ".write":false,
+              ".read": true,
+          },
+            "PublishersLimits":{
+              "$uid":{
+              ".write":false,
+              ".read": "auth.uid == $uid",
+              }
+          },
+            "SystemStatus":{
+              ".read":true,
+                ".write":false
+            },
+          "Reports":{
+            ".write":"!data.exists() && auth!=null && root.child('Main/Shared/SystemStatus/').child('/Reports').val() != false",
+            "Mods":{
+              "Addons":{
+                //addon post id
+                "$uid":{
+                  //this id should exist in (Mods/Addons) and the data of the auth.uid inside this node should not be exist because user can send report once and can not update it
+                  ".validate":"root.child('Main/Shared/Mods/Addons').child($uid).exists()==true && root.child('Main/Shared/Reports/Mods/Addons').child($uid).child('/').child(auth.uid).exists()==false",
+                  "$user_id":{
+                    //only the auth.uid equal to the $user_id can read his report because in the client we check if this exist we say to the user your alredy send the report
+                    ".read":"auth.uid== $user_id",
+                    ".write":"auth.uid== $user_id",
+                      //should have 'Reason' key
+                    ".validate":"auth.uid == $user_id && newData.hasChild('Reason')",
+                      "Reason":{
+                        //Reason Key should have at least 80 character and not bigger than 1000 character
+                        ".validate":"newData.val().length >= 80 && newData.val().length <= 1000",
+                        "$other":{".validate":false,},
+                      },
+                  },
+                }
+              },
+            },
+              "Worlds":{
+                  "$uid":{
+                  ".validate":"root.child('Main/Shared/Worlds/').child($uid).exists()==true && root.child('Main/Shared/Reports/Worlds/').child($uid).child('/').child(auth.uid).exists()==false",
+                  "$user_id":{
+                    //only the auth.uid equal to the $user_id can read his report because in the client we check if this exist we say to the user your alredy send the report
+                    ".read":"auth.uid== $user_id",
+                    ".write":"auth.uid== $user_id",
+                      //should have 'Reason' key
+                    ".validate":"auth.uid == $user_id && newData.hasChild('Reason')",
+                      "Reason":{
+                        //Reason Key should have at least 80 character and not bigger than 1000 character
+                        ".validate":"newData.val().length >= 80 && newData.val().length <= 1000",
+                        "$other":{".validate":false,},
+                      },
+                  },
+                }
+              },
+          },
+          "Drafts":{
+              "Mods":{
+                "Addons":{
+                  ".indexOn": ["PublisherID"],
+                  //allow read only who filter these addons by his id and he is an publisher, so the other can not acess or see the other publishers drafts
+                  ".read":"root.child('Main/Shared/Publishers/').child(auth.uid).exists()==true && query.orderByChild=='PublisherID'&&
+                  query.equalTo==auth.uid",
+                  "$uid":{
+                    //user is publisher and the new post PublisherID Node equal to auth.uid and post not exist before
+                    //and the new post should have these required nodes.(add the post)
+                    ".write":"auth!=null && root.child('Main/Shared/Publishers/').child(auth.uid).exists()==true &&
+                   newData.child('PublisherID').val()==auth.uid && !data.exists() &&
+                      newData.hasChildren(['Title','Category','DownloadLink','DownloadLinkInfo','Images','PublisherID','Support','RatesCount'])
+                    ||
+                  //user is publisher and the new post PublisherID Node equal to auth.uid and post is exist in the addons posts.(for delete operation)
+                   auth!=null && root.child('Main/Shared/Publishers/').child(auth.uid).exists()==true &&
+                   data.child('PublisherID').val()==auth.uid && data.exists()
+                    ",
+                 "Category":{
+                  ".validate": "root.child('Main/Shared/Validations/Categories/Addons/').child(newData.val()).exists()==true && newData.exists()",
+                      "$other":{
+                      ".validate":false,
+                    }
+                },
+                  "PublisherID":{
+                  ".validate": "auth.uid == newData.val() && newData.exists()",
+                      "$other":{
+                      ".validate":false,
+                    }
+                },
+                  "YoutubeVideo":{
+                    ".validate": "newData.val().length <=150 && newData.isString() && newData.val().matches(/^(ht|f)tp(s?):\\/\\/[0-9a-zA-Z]([-.\\w]*[0-9a-zA-Z])*((0-9)*)*(\\/?)([a-zA-Z0-9\\-\\.\\?\\,\\'\\/\\\\+&=%\\$#_]*)?$/)",
+                      "$other":{
+                      ".validate":false,
+                    }
+                },
+                 "DownloadLinkInfo":{
+                  ".validate": "root.child('Main/Shared/Validations/DownloadLinkTypes/').child(newData.val()).exists()==true && newData.exists()",
+                      "$other":{
+                      ".validate":false,
+                    }
+                },
+                 "DownloadLink":{
+                    ".validate": "newData.exists()&&newData.val().length <=2000 && newData.isString() && newData.val().matches(/^(ht|f)tp(s?):\\/\\/[0-9a-zA-Z]([-.\\w]*[0-9a-zA-Z])*((0-9)*)*(\\/?)([a-zA-Z0-9\\-\\.\\?\\,\\'\\/\\\\+&=%\\$#_]*)?$/)",
+                      "$other":{
+                      ".validate":false,
+                    }
+                },
+                  //required one image at least
+                "Images":{
+                  //restrict other data or images array may be more than 5
+                  "$other":{
+                  ".validate":false,
+                  },
+                  "0":{
+                    ".validate": "newData.exists() && newData.val().length <=1000 && newData.isString() && newData.val().matches(/^(ht|f)tp(s?):\\/\\/[0-9a-zA-Z]([-.\\w]*[0-9a-zA-Z])*((0-9)*)*(\\/?)([a-zA-Z0-9\\-\\.\\?\\,\\'\\/\\\\+&=%\\$#_]*)?$/)",
+                      "$other":{
+                      ".validate":false,
+                    }
+                  },
+                   "1":{
+                    ".validate": "newData.val().length <=1000 && newData.isString() && newData.val().matches(/^(ht|f)tp(s?):\\/\\/[0-9a-zA-Z]([-.\\w]*[0-9a-zA-Z])*((0-9)*)*(\\/?)([a-zA-Z0-9\\-\\.\\?\\,\\'\\/\\\\+&=%\\$#_]*)?$/)",
+                      "$other":{
+                      ".validate":false,
+                    }
+                  },
+                  "2":{
+                    ".validate": "newData.val().length <=1000 && newData.isString() && newData.val().matches(/^(ht|f)tp(s?):\\/\\/[0-9a-zA-Z]([-.\\w]*[0-9a-zA-Z])*((0-9)*)*(\\/?)([a-zA-Z0-9\\-\\.\\?\\,\\'\\/\\\\+&=%\\$#_]*)?$/)",
+                      "$other":{
+                      ".validate":false,
+                    }
+                  },
+                   "3":{
+                    ".validate": "newData.val().length <=1000 && newData.isString() && newData.val().matches(/^(ht|f)tp(s?):\\/\\/[0-9a-zA-Z]([-.\\w]*[0-9a-zA-Z])*((0-9)*)*(\\/?)([a-zA-Z0-9\\-\\.\\?\\,\\'\\/\\\\+&=%\\$#_]*)?$/)",
+                       "$other":{
+                      ".validate":false,
+                    }
+                  },
+                  "4":{
+                    ".validate": "newData.val().length <=1000 && newData.isString() && newData.val().matches(/^(ht|f)tp(s?):\\/\\/[0-9a-zA-Z]([-.\\w]*[0-9a-zA-Z])*((0-9)*)*(\\/?)([a-zA-Z0-9\\-\\.\\?\\,\\'\\/\\\\+&=%\\$#_]*)?$/)",
+                       "$other":{
+                      ".validate":false,
+                    }
+                  },
+                },
+                "Support":{
+                  ".validate": "root.child('Main/Shared/Validations/Minecraft/Versions/').child(newData.val()).exists()==true && newData.exists()",
+                    "$other":{
+                      ".validate":false,
+                    }
+                },
+                 "Title":{
+                  ".validate": "newData.exists() && newData.val().length >= 20 && newData.val().length <= 100",
+                     "$other":{
+                      ".validate":false,
+                    }
+                },
+              "RatedBy":{
+                "$uid": {
+               ".write": "auth.uid == $uid",
+               ".validate": "(!data.exists() && newData.val() == true &&
+                      newData.parent().parent().child('RatesCount').val() == data.parent().parent().child('RatesCount').val() + 1
+                    )"}},
+                    "RatesCount":{
+                      //first expression for the first inital when the post is created by the user so he should put 0 one time only
+                      //when the post is not exist and RatesCount is not created before.
+                       ".validate": "newData.val()==0 && auth.uid== newData.parent().child('PublisherID').val() && !data.exists()
+                  ||
+                  (newData.val() == data.val() + 1 && 
+                   newData.parent().child('RatedBy').child(auth.uid).val() == true && 
+                   !data.parent().child('RatedBy').child(auth.uid).exists()
+                  ) || 
+                  (newData.val() == data.val() - 1 && 
+                   !newData.parent().child('RatedBy').child(auth.uid).exists() && 
+                   data.parent().child('RatedBy').child(auth.uid).val() == true
+                  )",
+               ".write": "auth != null"
+                    },
+                  "$other":{
+                  ".validate":false,
+                },
+            },
+                }
+              },
+            "Worlds":{
+              
+            }
+          },
+          "Publishers":{
+              "$uid":{
+                ".read":"auth.uid == $uid",
+                ".write":false,
+              },
+          },
+            "PubRequests":{
+              "$uid":{
+                //if the user has verified his email
+                //if the user uid equal to sender auth.uid 
+                //if the user dont have request before
+                //if the user uid is not exist in publishers path
+                ".write":"auth.uid == $uid && root.child('Main/Shared/PubRequests/').child(auth.uid).exists()!=true
+                && root.child('Main/Shared/Publishers/').child(auth.uid).exists()!=true
+                && newData.hasChildren(['Time','Date','Description','Country','Age','Category','Computer'])
+                && auth.token.email_verified == true",
+                ".read":"auth.uid==$uid",
+                  //should be an timestamp of current time
+                  "Time":{
+                    ".validate":"newData.val()== now",
+                    "$other":{".validate":false,},
+                  },
+                  //the Date Should be between the years 1900-2099
+                  "Date":{
+                    ".validate":"newData.isString() &&
+              newData.val().matches(/^(19|20)[0-9][0-9][-\\/. ](0[1-9]|1[012])[-\\/. ](0[1-9]|[12][0-9]|3[01])$/)",
+                     "$other":{".validate":false,},
+                  },
+                  //the description less than or equal 200 character and greater than or equal 100
+                  "Description":{
+                    ".validate":"newData.val().length <=200 && newData.val().length >= 40",
+                    "$other":{".validate":false,},
+                  },
+                  //should be a basic url with https or http and should be equal or less than or equal 100 character
+                  //and equal or greater than 24 chraracter as minimum youtube channel link length (optional)
+                  "Youtube":{
+                    ".validate": "newData.val().length <=150 && newData.isString() && newData.val().matches(/^(ht|f)tp(s?):\\/\\/[0-9a-zA-Z]([-.\\w]*[0-9a-zA-Z])*((0-9)*)*(\\/?)([a-zA-Z0-9\\-\\.\\?\\,\\'\\/\\\\+&=%\\$#_]*)?$/)",
+                    "$other":{".validate":false,},
+                  },
+                  //(optional) should be a basic url with https or http and should be equal or less than or equal 200 character
+                  //and greater than or equal 7 characters for example minimum site (www.a.b)
+                  "Website":{
+                  ".validate": "newData.val().length >= 7 && newData.val().length <=200 && newData.isString() && newData.val().matches(/^(ht|f)tp(s?):\\/\\/[0-9a-zA-Z]([-.\\w]*[0-9a-zA-Z])*((0-9)*)*(\\/?)([a-zA-Z0-9\\-\\.\\?\\,\\'\\/\\\\+&=%\\$#_]*)?$/)",
+                  "$other":{".validate":false,},
+                  },
+                  //the new value should be in the countries path
+                  "Country":{
+                      ".validate":"root.child('Main/Shared/Validations/SChannelC/').child(newData.val()).exists()==true",
+                      "$other":{".validate":false,},
+                  },
+                  //the publisher should be less than 100 years old lol :)
+                  //and greater than 7 years old as minecraft privacy policy
+                  "Age":{
+                    ".validate":"newData.val() <=100 && newData.val() >=7",
+                      "$other":{".validate":false,},
+                  },
+                  "Category":{
+                    ".validate":"newData.val() =='عوالم وخرائط' || newData.val()=='مودات'|| newData.val()=='كلاهما'",
+                      "$other":{".validate":false,},
+                  },
+                   "Computer":{
+                    ".validate":"newData.val()==true || newData.val() == false",
+                      "$other":{".validate":false,},
+                  },
+                    //other passed nodes 
+                  "$other":{
+                    ".validate":false,
+                  }
+              }
+            },
+            "Trends":{
+              ".read":true,
+              ".write":false,
+            },
+    "Users": {
+      "$uid": {
+         "Items":{
+          ".read": "$uid === auth.uid",
+          ".write":false,
+          },
+          "Awards":{
+          ".read": "$uid === auth.uid",
+          ".write":false,
+          },
+            "MyChannel":{
+            //allow writing when the user is a publisher and the uid is equal to auth.uid
+            ".write":"auth.uid == $uid && root.child('Main/Shared/Publishers').child(auth.uid).exists()==true",
+            //any sigined user can see channel information yet
+            ".read":"auth!=null",
+            "Information":{
+              //the name of the channel should be (equal or less than 20) and (greater than or equal 6)
+              "Name":{
+                ".validate":"newData.val().length <= 20 && newData.val().length >= 2 &&
+                root.child('/Main/Shared/Validations/BadWords/AllLanguages/').child(newData.val()).exists()!=true",
+                "$other":{".validate":false,},
+              },
+              //the description of the channel should be (equal or less than 250) and (greater than or equal 15)
+              "Description":{
+                ".validate":"newData.val().length <= 250",
+                "$other":{".validate":false,},
+              },
+                "Banner":{
+                ".validate":"newData.val().length <= 1000",
+                "$other":{".validate":false,},
+              },
+                "Photo":{
+                ".validate":"newData.val().length <= 1000",
+                "$other":{".validate":false,},
+              },
+              //the value of the Theme Color should be in colors list
+              "ThemeColor":{
+                ".validate":"root.child('Main/Shared/Validations/Colors/').child(newData.val()).exists()==true",
+                "$other":{".validate":false,},
+              },
+              "$other":{".validate":false,},
+            },
+            "DonationSites":{
+              //only the username of these websites and the length should be at least 1 character and not bigger than 100 because there is not a user name in this length
+              "Paypal":{
+              ".validate":"newData.isString() && newData.val().length <= 150",
+              "$other":{".validate":false,}, 
+              },
+              "Patreon":{
+              ".validate":"newData.isString() && newData.val().length <= 150",
+              "$other":{".validate":false,}, 
+              },
+              "$other":{".validate":false,},
+            },
+                "Posts":{
+                "Addons":{
+                  "$uid":{
+                  //allow the user to delete his addons only
+                  ".validate":"newData.exists()!=true && root.child('Main/Shared/Mods/Addons/').child($uid).child('/PublisherID').val()==auth.uid",
+                  "$other":{".validate":false,}, 
+                  }
+                },
+                "Worlds":{
+                  "$uid":{
+                  //allow the user to delete his Worlds only
+                  ".validate":"newData.exists()!=true && root.child('Main/Shared/Worlds/').child($uid).child('/PublisherID').val()==auth.uid",
+                  "$other":{".validate":false,},  
+                  }
+                },
+               "$other":{".validate":false,},  
+              },
+            },
+        "Account":{
+          ".read": "$uid === auth.uid",
+          "Banner":{
+            //this mean the user can edit and write this but can not be or null so it means can not (deleted) 
+            //the user can not add or change his banner unitl he reach 400 xp (level 4) and his email is verified
+          ".write": "newData.exists() && $uid === auth.uid && data.parent().child('Xp').val() >= 400 && auth.token.email_verified == true",
+          },
+          "Photo":{
+            //user can edit his photo url when he reach 200xp (level 2) and his email is verified
+          ".write": "newData.exists() && $uid === auth.uid && data.parent().child('Xp').val() >= 200 && auth.token.email_verified == true",
+          },
+          "Xp":{
+            //It means only can written when its not exist (the user add this data new) and the value of level is 0
+            //after that the user add this node but can not change it later
+          ".write": "$uid === auth.uid && !data.exists() && newData.val()==0",
+          },
+          "Type":{
+          ".write": "$uid === auth.uid && !data.exists() && newData.val()=='فضي'",
+          },
+          "Coins":{
+          ".write": "$uid === auth.uid && !data.exists() && newData.val()==0",
+          },
+        },
+        "Banners":{
+        ".read": "$uid === auth.uid",
+        ".write": false, 
+        },
+        "Photos":{
+        ".read": "$uid === auth.uid",
+        ".write": false, 
+        },
+        "MyBookmark":{
+          ".read":"auth.uid== $uid",
+          "Addons":{
+            ".write":"auth.uid==$uid && root.child('Main/Shared/SystemStatus/').child('/Bookmarks').val() != false",
+              "$uid": 
+               {
+                ".validate":"newData.val()==true && root.child('Main/Shared/Mods/Addons/').child($uid).exists()==true && !data.exists() ||data.exists() && newData.val()==null && root.child('Main/Shared/Mods/Addons/').child($uid).exists()==true",
+               "$other":{
+                 ".validate":false,
+               }
+            }
+          },
+             "Worlds":{
+            ".write":"auth.uid==$uid && root.child('Main/Shared/SystemStatus/').child('/Bookmarks').val() != false",
+              "$uid": 
+               {
+                ".validate":"newData.val()==true && root.child('Main/Shared/Worlds/').child($uid).exists()==true && !data.exists() ||data.exists() && newData.val()==null && root.child('Main/Shared/Worlds/').child($uid).exists()==true",
+               "$other":{
+                 ".validate":false,
+               }
+            },
+        }
+      },
+        "Notifications":{
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid",
+          "$uid":{
+            "IsOpened":{
+              ".validate":"data.val() == 1 && newData.val() == 0 ||data.val() == 0 && newData.val() == 1",
+            },
+              "$other":{
+              ".validate":false,
+            },
+          }
+        },
+        "Events":{
+        ".read": "$uid === auth.uid",
+        ".write":false,
+        },
+      }
+    },
+      "Tools":{
+        ".write":false,
+          ".read":"auth!=null",
+      },
+      "Versions":{
+       ".read": true,
+       ".write": false,
+      },
+       "SlideOffers":{
+       ".read": true,
+       ".write":false,
+      },
+        //just make the same for worlds
+        //update the nodes name and dont miss for downloads and views and rate 
+        //add rule for download link and any other nodes can be updated by the publisher
+        "Mods":{
+          "Addons":{
+         ".read":"query.limitToLast <= 9 && auth!=null || query.orderByChild=='Title'&& query.limitToLast <= 500 && auth!=null",
+         ".indexOn": ["RatesCount","Title","PublisherID","Category"],
+            "$uid":{
+               ".read":"auth != null",      
+                 "Category":{
+                  ".write": "newData.exists() && auth.uid === data.parent().child('PublisherID').val()",
+                      "$other":{
+                      ".validate":false,
+                    }
+                },
+                  "YoutubeVideo":{
+                  ".write": "root.child('Main/Shared/PublishersLimits/').child(auth.uid).child('/Youtube').val() == true && newData.exists() && auth.uid === data.parent().child('PublisherID').val()",
+                      "$other":{
+                      ".validate":false,
+                    }
+                },
+                 "DownloadLinkInfo":{
+                  ".write": "auth.uid === data.parent().child('PublisherID').val() && newData.val()=='MediaFire' || auth.uid === data.parent().child('PublisherID').val() && newData.val()=='Direct'",
+                      "$other":{
+                      ".validate":false,
+                    }
+                },
+                 "DownloadLink":{
+                  ".write": "newData.exists() && auth.uid === data.parent().child('PublisherID').val()",
+                      "$other":{
+                      ".validate":false,
+                    }
+                },
+                "Images":{
+                  "0":{
+                    ".write": "auth.uid === data.parent().child('PublisherID').val()",
+                      "$other":{
+                      ".validate":false,
+                    }
+                  },
+                   "1":{
+                    ".write": "auth.uid === data.parent().child('PublisherID').val()",
+                      "$other":{
+                      ".validate":false,
+                    }
+                  },
+                  "2":{
+                    ".write": "auth.uid === data.parent().child('PublisherID').val()",
+                      "$other":{
+                      ".validate":false,
+                    }
+                  },
+                   "3":{
+                    ".write": "auth.uid === data.parent().child('PublisherID').val()",
+                       "$other":{
+                      ".validate":false,
+                    }
+                  },
+                  "4":{
+                    ".write": "auth.uid === data.parent().child('PublisherID').val()",
+                       "$other":{
+                      ".validate":false,
+                    }
+                  },
+                   "5":{
+                    ".write": "auth.uid === data.parent().child('PublisherID').val()",
+                       "$other":{
+                      ".validate":false,
+                    }
+                  },                  
+                },
+                "Support":{
+                  ".write": "newData.exists() && auth.uid === data.parent().child('PublisherID').val()",
+                    "$other":{
+                      ".validate":false,
+                    }
+                },
+                 "Title":{
+                  ".write": "newData.exists() && newData.val().length > 40 && newData.val().length <= 90 && auth.uid === data.parent().child('PublisherID').val()",
+                     "$other":{
+                      ".validate":false,
+                    }
+                },
+
+            },
+          }
+        },
+          //for worlds
+          "Worlds":{
+         ".read":"query.limitToLast <= 9 && auth!=null || query.orderByChild=='Title'&& query.limitToLast <= 500 && auth!=null",
+         ".indexOn": ["RatesCount","Title","PublisherID","Category"],
+            "$uid":{
+                  ".read":"auth != null",      
+                 "Category":{
+                  ".write": "newData.exists() && auth.uid === data.parent().child('PublisherID').val()",
+                      "$other":{
+                      ".validate":false,
+                    }
+                },
+                  "YoutubeVideo":{
+                  ".write": "root.child('Main/Shared/PublishersLimits/').child(auth.uid).child('/Youtube').val() == true && newData.exists() && auth.uid === data.parent().child('PublisherID').val()",
+                      "$other":{
+                      ".validate":false,
+                    }
+                },
+                 "DownloadLinkInfo":{
+                  ".write": "auth.uid === data.parent().child('PublisherID').val() && newData.val()=='MediaFire' || auth.uid === data.parent().child('PublisherID').val() && newData.val()=='Direct'",
+                      "$other":{
+                      ".validate":false,
+                    }
+                },
+                 "DownloadLink":{
+                  ".write": "newData.exists() && auth.uid === data.parent().child('PublisherID').val()",
+                      "$other":{
+                      ".validate":false,
+                    }
+                },
+                "Images":{
+                  "0":{
+                    ".write": "auth.uid === data.parent().child('PublisherID').val()",
+                      "$other":{
+                      ".validate":false,
+                    }
+                  },
+                   "1":{
+                    ".write": "auth.uid === data.parent().child('PublisherID').val()",
+                      "$other":{
+                      ".validate":false,
+                    }
+                  },
+                  "2":{
+                    ".write": "auth.uid === data.parent().child('PublisherID').val()",
+                      "$other":{
+                      ".validate":false,
+                    }
+                  },
+                   "3":{
+                    ".write": "auth.uid === data.parent().child('PublisherID').val()",
+                       "$other":{
+                      ".validate":false,
+                    }
+                  },
+                  "4":{
+                    ".write": "auth.uid === data.parent().child('PublisherID').val()",
+                       "$other":{
+                      ".validate":false,
+                    }
+                  },
+                   "5":{
+                    ".write": "auth.uid === data.parent().child('PublisherID').val()",
+                       "$other":{
+                      ".validate":false,
+                    }
+                  },                  
+                },
+                "Support":{
+                  ".write": "newData.exists() && auth.uid === data.parent().child('PublisherID').val()",
+                    "$other":{
+                      ".validate":false,
+                    }
+                },
+                 "Title":{
+                  ".write": "newData.exists() && newData.val().length > 40 && newData.val().length <= 90 && auth.uid === data.parent().child('PublisherID').val()",
+                     "$other":{
+                      ".validate":false,
+                    }
+                },
+                 "RatedBy":{
+                "$uid": {
+               ".write": "auth.uid == $uid",
+               ".validate": "(!data.exists() && newData.val() == true &&
+                      newData.parent().parent().child('RatesCount').val() == data.parent().parent().child('RatesCount').val() + 1
+                    )"}},
+                    "RatesCount":{
+                       ".validate": "(newData.val() == data.val() + 1 && 
+                   newData.parent().child('RatedBy').child(auth.uid).val() == true && 
+                   !data.parent().child('RatedBy').child(auth.uid).exists()
+                  ) || 
+                  (newData.val() == data.val() - 1 && 
+                   !newData.parent().child('RatedBy').child(auth.uid).exists() && 
+                   data.parent().child('RatedBy').child(auth.uid).val() == true
+                  )",
+               ".write": "auth != null"
+                    },
+            },
+          }
+      }
+    }
+  }
+}
